@@ -1,9 +1,8 @@
 import "./style.css";
 import * as THREE from "three";
 import { Pane } from "tweakpane";
-import { OrbitControls } from "three/examples/jsm/Addons.js";
+import { GLTFLoader, OrbitControls } from "three/examples/jsm/Addons.js";
 import * as dat from 'dat.gui';
-
 
 
 
@@ -16,6 +15,10 @@ const scene = new THREE.Scene();
 
 /** Texture Loader */
 const textureLoader = new THREE.TextureLoader();
+const gltfLoader = new GLTFLoader();
+const cubeTextureLoader = new THREE.CubeTextureLoader();
+
+
 
 const albedoTexture =  textureLoader.load('/textures/space/albedo.png')
 const aoTexture =  textureLoader.load('/textures/space/ao.png')
@@ -24,19 +27,33 @@ const normalTexture = textureLoader.load('/textures/space/normal.png')
 const metalTexture = textureLoader.load('/textures/space/metallic.png');
 const roughnesTexture = textureLoader.load('/textures/space/roughness.png')
 
-const cubeTextureLoader = new THREE.CubeTextureLoader();
+
+
 
 const environmentMap = cubeTextureLoader.load([
- "textures/environmentMaps/1/px.png",
- "textures/environmentMaps/1/nx.png",
- "textures/environmentMaps/1/py.png",
- "textures/environmentMaps/1/ny.png",
- "textures/environmentMaps/1/pz.png",
- "textures/environmentMaps/1/nz.png"
+ "textures/environmentMaps/0/px.png",
+ "textures/environmentMaps/0/nx.png",
+ "textures/environmentMaps/0/py.png",
+ "textures/environmentMaps/0/ny.png",
+ "textures/environmentMaps/0/pz.png",
+ "textures/environmentMaps/0/nz.png"
 ])
 
+let mixer = null
+gltfLoader.load(
+  '/models/plane.glb', 
+  (gltf)=>{
+    console.log(gltf)
+    
+    scene.add(gltf.scene)
+    
+    gltf.scene.scale.setScalar(0.03)
 
-
+    // mixer 
+    mixer = new THREE.AnimationMixer(gltf.scene)
+    const action = mixer.clipAction(gltf.animations[0])
+    action.play() 
+});
 
 
 
@@ -45,7 +62,7 @@ const environmentMap = cubeTextureLoader.load([
  * Lights
  */
 // initialize the light
-const light = new THREE.AmbientLight(0xffffff, 0);
+const light = new THREE.AmbientLight(0xffffff, 3);
 scene.add(light);
 
 const pointLight = new THREE.PointLight(0xffffff, 1.2);
@@ -110,7 +127,7 @@ Group1.addBinding(light, 'intensity', { min: 0, max: 1.5, step: 0.01 });
  * Mesh
  */
 const sphereMesh = new THREE.Mesh(sphereGeometry, sphereMaterial)
-scene.add(sphereMesh)
+// scene.add(sphereMesh)
 
 /**
  * Environment Factors
@@ -156,13 +173,20 @@ renderer.physicallyCorrectLights = true
 
 
 const clock = new THREE.Clock();
+let previousTime = 0
+
 const renderLoop = () => {
   const elapsedTime = clock.getElapsedTime();
+
+  const deltaTime = elapsedTime - previousTime;
   sphereMesh.rotation.y = 0.1 * elapsedTime;
 
   // Update controls
   controls.update();
 
+  if(mixer) {
+    mixer.update(deltaTime)
+  }
   // Update Render
   renderer.render(scene, camera);
 
